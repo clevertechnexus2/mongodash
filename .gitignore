@@ -1,0 +1,9 @@
+node_modules/
+data/
+*.log
+client/node_modules/
+client/dist/
+.env
+.cache/
+.local/
+.upm/
