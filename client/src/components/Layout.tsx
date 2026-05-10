@@ -145,13 +145,13 @@ function Footer() {
               className="w-4 h-4 rounded flex items-center justify-center text-white text-xs font-black shrink-0"
               style={{ background: 'linear-gradient(135deg,#6e5cff,#0ff4c6)' }}
             >
-              X
+              
             </div>
             <span
               className="text-xs font-bold text-transparent bg-clip-text"
               style={{ backgroundImage: 'linear-gradient(135deg,#6e5cff,#0ff4c6)' }}
             >
-              XCASPER
+              CleverX
             </span>
             <ExternalLink className="w-2.5 h-2.5 text-slate-700 group-hover:text-slate-500 transition-colors" />
           </a>

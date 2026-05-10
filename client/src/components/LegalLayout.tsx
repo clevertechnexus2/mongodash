@@ -66,7 +66,7 @@ export default function LegalLayout({ title, subtitle, lastUpdated, children }: 
                 <Link to="/privacy" className="text-slate-500 hover:text-emerald-400 transition-colors">Privacy Policy</Link>
                 <Link to="/license" className="text-slate-500 hover:text-emerald-400 transition-colors">License</Link>
                 <Link to="/docs" className="text-slate-500 hover:text-emerald-400 transition-colors">Docs</Link>
-                <a href="mailto:support@xcasper.space" className="text-slate-500 hover:text-emerald-400 transition-colors">Support</a>
+                <a href="mailto:support@clevertechnexus.qzz.io" className="text-slate-500 hover:text-emerald-400 transition-colors">Support</a>
               </nav>
               <p className="text-slate-700 text-xs">© {year} Clever Tech Nexus. All rights reserved.</p>
             </div>
