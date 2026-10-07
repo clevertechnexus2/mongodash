@@ -38,6 +38,20 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const [status, setStatus] = useState<'loading' | 'admin' | 'forbidden'>('loading');
+
+  useEffect(() => {
+    auth.me()
+      .then(({ data }) => setStatus(data.username === 'admin' ? 'admin' : 'forbidden'))
+      .catch(() => setStatus('forbidden'));
+  }, []);
+
+  if (status === 'loading') return null;
+  if (status === 'forbidden') return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -62,7 +76,7 @@ export default function App() {
           <Route path="apps/new" element={<CreateApp />} />
           <Route path="apps/:id" element={<AppDetail />} />
           <Route path="databases" element={<Databases />} />
-          <Route path="users" element={<UsersPage />} />
+          <Route path="users" element={<AdminRoute><UsersPage /></AdminRoute>} />
           <Route path="docs" element={<Docs />} />
         </Route>
 

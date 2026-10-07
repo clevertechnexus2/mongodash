@@ -22,14 +22,14 @@ MongoDash is a single-command, self-hosted MongoDB dashboard that:
 
 | Requirement | Version |
 |---|---|
-| Node.js | v18 or later |
+| Node.js | v22.x (Heroku) / v20.19+ |
 | npm | v8 or later |
-| MongoDB binary | Bundled (no external install needed) |
+| MongoDB binary | Downloaded automatically on first start; pre-downloaded during Heroku build |
 | OS | Linux (Ubuntu 20.04+ recommended) |
 | RAM | 512 MB minimum, 1 GB recommended |
 | Ports | 5000 (dashboard), 27018 (MongoDB) |
 
-> **VPS only.** MongoDash is designed exclusively for Linux VPS environments. It is not intended for shared hosting, Windows servers, or local development machines in production use.
+> MongoDash is designed primarily for Linux VPS environments. A Heroku deployment is supported for demos and testing, with the limitations described below.
 
 ---
 
@@ -61,7 +61,7 @@ SESSION_SECRET=replace-this-with-a-long-random-secret
 # Defaults to auto-detected VPS IP
 MONGO_PUBLIC_HOST=your.domain.com
 
-# Optional — override which IP mongod binds to (default: 0.0.0.0)
+# Optional — override which IP mongod binds to (default: 0.0.0.0 locally, 127.0.0.1 on Heroku)
 MONGO_BIND_IP=0.0.0.0
 
 # Optional — override the dashboard port (default: 5000)
@@ -69,6 +69,34 @@ PORT=5000
 ```
 
 > **Never commit your `.env` file.** It is already listed in `.gitignore`.
+
+### Deploying to Heroku (local MongoDB)
+
+Heroku runs MongoDash and a local `mongod` process in the same web dyno. The Heroku build installs a pinned MongoDB binary and builds the dashboard frontend; the `Procfile` starts the web process on Heroku's assigned `PORT`.
+
+1. Create a Heroku app and configure stable secrets:
+
+   ```bash
+   heroku create your-mongodash-app
+   heroku config:set SESSION_SECRET="$(openssl rand -hex 32)" \
+     MONGODB_API_KEY="$(openssl rand -hex 32)" -a your-mongodash-app
+   ```
+
+2. Deploy the repository's `main` branch:
+
+   ```bash
+   git push heroku main
+   heroku logs --tail -a your-mongodash-app
+   ```
+
+3. Open the app and find the generated first-login admin password in the Heroku logs.
+
+**Important limitations of local MongoDB on Heroku:**
+
+- Heroku dyno filesystems are ephemeral. All MongoDB databases, dashboard accounts, and app records stored in the local `data/` directory are lost when the dyno restarts, is redeployed, or is replaced. This mode is only suitable for disposable demos/tests, not production data.
+- Run exactly one web dyno (`heroku ps:scale web=1`). Multiple dynos would each have a separate, isolated MongoDB instance.
+- Heroku exposes the web process's `PORT`, not MongoDB port `27018`. The database is bound to `127.0.0.1` by default on Heroku, so generated direct MongoDB connection strings are not reachable from external clients. Use the dashboard and HTTP API, or move to a separately hosted MongoDB service if durable data or direct client connections are required.
+- Set both `SESSION_SECRET` and `MONGODB_API_KEY` as config vars. The app refuses to start on Heroku without them rather than using an insecure session default or silently rotating the API key after a restart.
 
 ### 4. Open firewall ports
 
@@ -182,6 +210,7 @@ MongoDash supports multiple dashboard login accounts.
 
 - Each user only sees and manages **their own apps**
 - The **admin** account sees all apps across all users
+- Only the **admin** account can list, create, change passwords, or delete dashboard users
 - The admin account **cannot be deleted**
 - Passwords must be at least 6 characters
 
