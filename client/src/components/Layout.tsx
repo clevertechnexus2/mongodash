@@ -3,7 +3,7 @@ import {
   LayoutDashboard, AppWindow, Database, BookOpen,
   LogOut, Leaf, Menu, X, Users, ExternalLink,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { auth } from '../api';
 
 const navItems = [
@@ -14,7 +14,7 @@ const navItems = [
   { to: '/docs', label: 'Docs', icon: BookOpen },
 ];
 
-function SidebarContent({ mobile, onClose, onLogout }: { mobile?: boolean; onClose?: () => void; onLogout: () => void }) {
+function SidebarContent({ mobile, onClose, onLogout, isAdmin }: { mobile?: boolean; onClose?: () => void; onLogout: () => void; isAdmin: boolean }) {
   return (
     <div className="flex flex-col bg-slate-900 border-r border-slate-800 h-screen w-60">
       <div className="flex items-center gap-2.5 px-5 py-5 border-b border-slate-800">
@@ -33,7 +33,7 @@ function SidebarContent({ mobile, onClose, onLogout }: { mobile?: boolean; onClo
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {navItems.map(({ to, label, icon: Icon, end }) => (
+        {navItems.filter(({ to }) => to !== '/users' || isAdmin).map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}
@@ -164,6 +164,13 @@ function Footer() {
 export default function Layout() {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    auth.me()
+      .then(({ data }) => setIsAdmin(data.username === 'admin'))
+      .catch(() => setIsAdmin(false));
+  }, []);
 
   const handleLogout = async () => {
     await auth.logout();
@@ -173,14 +180,14 @@ export default function Layout() {
   return (
     <div className="flex min-h-screen bg-slate-950">
       <aside className="hidden lg:block w-60 shrink-0">
-        <SidebarContent onLogout={handleLogout} />
+        <SidebarContent onLogout={handleLogout} isAdmin={isAdmin} />
       </aside>
 
       {sidebarOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
           <div className="fixed inset-0 bg-black/60" onClick={() => setSidebarOpen(false)} />
           <div className="relative">
-            <SidebarContent mobile onClose={() => setSidebarOpen(false)} onLogout={handleLogout} />
+            <SidebarContent mobile onClose={() => setSidebarOpen(false)} onLogout={handleLogout} isAdmin={isAdmin} />
           </div>
         </div>
       )}

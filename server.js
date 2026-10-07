@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const { MongoClient, ObjectId } = require('mongodb');
+const { MongoBinary } = require('mongodb-memory-server-core');
 const { spawn, execSync } = require('child_process');
 const crypto = require('crypto');
 const cors = require('cors');
@@ -22,15 +23,26 @@ const usersRoutes = require('./routes/users');
 
 const app = express();
 app.set('trust proxy', 1);
+const IS_HEROKU = Boolean(process.env.DYNO || process.env.HEROKU_APP_ID);
 const PORT = parseInt(process.env.PORT || '5000', 10);
 const MONGO_PORT = parseInt(process.env.MONGO_PORT || '27018', 10);
 const MONGO_CONNECT_HOST = '127.0.0.1';
-const MONGOD_BIND_IP = process.env.MONGO_BIND_IP || '0.0.0.0';
+const MONGOD_BIND_IP = process.env.MONGO_BIND_IP || (IS_HEROKU ? '127.0.0.1' : '0.0.0.0');
+const MONGOD_VERSION = process.env.MONGOD_VERSION || '8.0.17';
+const MONGOD_BINARY_DIR = path.join(__dirname, 'node_modules', '.cache', 'mongodb-binaries');
 const DATA_DIR = path.join(__dirname, 'data', 'db');
 const KEY_FILE = path.join(__dirname, 'data', 'api_key.txt');
 const MONGO_ADMIN_USER = 'mongodash';
 const MONGO_ADMIN_PASS_FILE = path.join(__dirname, 'data', 'mongo_admin_pass.txt');
 const CLIENT_DIST = path.join(__dirname, 'client', 'dist');
+
+const SESSION_SECRET = process.env.SESSION_SECRET || (IS_HEROKU || process.env.NODE_ENV === 'production' ? '' : 'mongo-dashboard-secret-change-me');
+if (!SESSION_SECRET) {
+  throw new Error('SESSION_SECRET must be set in production. Generate a random secret and configure it as an environment variable.');
+}
+if (IS_HEROKU && !process.env.MONGODB_API_KEY) {
+  throw new Error('MONGODB_API_KEY must be set on Heroku so the HTTP API key remains stable across dyno restarts.');
+}
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(path.dirname(KEY_FILE), { recursive: true });
@@ -139,10 +151,15 @@ function waitForPort(host, port, timeoutMs = 30000) {
   });
 }
 
-function startMongod() {
+async function startMongod() {
+  const binaryPath = await MongoBinary.getPath({
+    version: MONGOD_VERSION,
+    downloadDir: MONGOD_BINARY_DIR,
+  });
+
   return new Promise((resolve, reject) => {
     const logFile = path.join(__dirname, 'data', 'mongod.log');
-    const mongod = spawn('mongod', [
+    const mongod = spawn(binaryPath, [
       '--dbpath', DATA_DIR,
       '--port', String(MONGO_PORT),
       '--bind_ip', MONGOD_BIND_IP,
@@ -214,10 +231,10 @@ app.use(cors({ credentials: true, origin: true }));
 app.use(express.json());
 app.use(cookieParser());
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'mongo-dashboard-secret-change-me',
+  secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  cookie: { httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: 'lax' },
+  cookie: { httpOnly: true, secure: 'auto', maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: 'lax' },
 }));
 
 // ── Health ─────────────────────────────────────────────────────────────────────
